@@ -1,47 +1,266 @@
 {
   "name": "informative-search",
-  "displayName": "informative-search",
-  "description": "",
+  "displayName": "Informative Search",
+  "description": "Enhanced search with categorized results by usage type",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.102.0"
+    "vscode": "^1.74.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
-  "main": "./dist/extension.js",
+  "keywords": [
+    "search",
+    "find",
+    "code analysis",
+    "categorized search",
+    "usage analysis"
+  ],
+  "activationEvents": [
+    "onCommand:informativeSearch.search",
+    "onCommand:informativeSearch.searchCurrentFile",
+    "onView:informativeSearchResults"
+  ],
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "informative-search.helloWorld",
-        "title": "Hello World"
+        "command": "informativeSearch.search",
+        "title": "Search in Workspace (Informative)",
+        "category": "Informative Search",
+        "icon": "$(search)"
+      },
+      {
+        "command": "informativeSearch.searchCurrentFile",
+        "title": "Search in Current File (Informative)",
+        "category": "Informative Search",
+        "icon": "$(search)"
+      },
+      {
+        "command": "informativeSearch.clearResults",
+        "title": "Clear Search Results",
+        "category": "Informative Search",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "informativeSearch.refreshResults",
+        "title": "Refresh Search Results",
+        "category": "Informative Search",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "informativeSearch.exportResults",
+        "title": "Export Search Results",
+        "category": "Informative Search",
+        "icon": "$(export)"
+      },
+      {
+        "command": "informativeSearch.openSearchSettings",
+        "title": "Open Search Settings",
+        "category": "Informative Search",
+        "icon": "$(settings)"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "informativeSearchResults",
+          "name": "Informative Search Results",
+          "when": "informativeSearch:hasResults",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "informativeSearch",
+          "title": "Informative Search",
+          "icon": "$(search-view-icon)"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "informativeSearchResults",
+        "contents": "No search results yet.\n[Search in Workspace](command:informativeSearch.search)\n[Search in Current File](command:informativeSearch.searchCurrentFile)",
+        "when": "!informativeSearch:hasResults"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "informativeSearch.search",
+          "when": "view == informativeSearchResults",
+          "group": "navigation@1"
+        },
+        {
+          "command": "informativeSearch.refreshResults",
+          "when": "view == informativeSearchResults && informativeSearch:hasResults",
+          "group": "navigation@2"
+        },
+        {
+          "command": "informativeSearch.clearResults",
+          "when": "view == informativeSearchResults && informativeSearch:hasResults",
+          "group": "navigation@3"
+        },
+        {
+          "command": "informativeSearch.exportResults",
+          "when": "view == informativeSearchResults && informativeSearch:hasResults",
+          "group": "1_export"
+        },
+        {
+          "command": "informativeSearch.openSearchSettings",
+          "when": "view == informativeSearchResults",
+          "group": "2_settings"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "informativeSearch.openFile",
+          "when": "view == informativeSearchResults && viewItem == searchMatch",
+          "group": "navigation@1"
+        },
+        {
+          "command": "informativeSearch.openFileToSide",
+          "when": "view == informativeSearchResults && viewItem == searchMatch",
+          "group": "navigation@2"
+        },
+        {
+          "command": "informativeSearch.copyPath",
+          "when": "view == informativeSearchResults && viewItem == searchMatch",
+          "group": "1_copy"
+        },
+        {
+          "command": "informativeSearch.copyLineContent",
+          "when": "view == informativeSearchResults && viewItem == searchMatch",
+          "group": "1_copy"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "informativeSearch.openFile",
+          "when": "false"
+        },
+        {
+          "command": "informativeSearch.openFileToSide",
+          "when": "false"
+        },
+        {
+          "command": "informativeSearch.copyPath",
+          "when": "false"
+        },
+        {
+          "command": "informativeSearch.copyLineContent",
+          "when": "false"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "informativeSearch.searchSelectedText",
+          "when": "editorHasSelection",
+          "group": "1_search"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "informativeSearch.search",
+        "key": "ctrl+shift+f",
+        "mac": "cmd+shift+f",
+        "when": "!searchViewletFocus"
+      },
+      {
+        "command": "informativeSearch.searchCurrentFile",
+        "key": "ctrl+shift+h",
+        "mac": "cmd+shift+h"
+      }
+    ],
+    "configuration": {
+      "title": "Informative Search",
+      "properties": {
+        "informativeSearch.includePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.{js,ts,jsx,tsx,vue,py,java,c,cpp,cs,php,rb,go,rs}"
+          ],
+          "description": "File patterns to include in search"
+        },
+        "informativeSearch.excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/*.min.js"
+          ],
+          "description": "File patterns to exclude from search"
+        },
+        "informativeSearch.includeComments": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include matches found in comments"
+        },
+        "informativeSearch.includeStringLiterals": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include matches found in string literals"
+        },
+        "informativeSearch.caseSensitive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Perform case-sensitive search"
+        },
+        "informativeSearch.useRegex": {
+          "type": "boolean",
+          "default": false,
+          "description": "Treat search term as regular expression"
+        },
+        "informativeSearch.maxResultsPerCategory": {
+          "type": "number",
+          "default": 100,
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Maximum number of results to show per category"
+        },
+        "informativeSearch.autoExpandCategories": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically expand categories with results"
+        },
+        "informativeSearch.showFileIcons": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show file type icons in results"
+        },
+        "informativeSearch.groupByFile": {
+          "type": "boolean",
+          "default": false,
+          "description": "Group results by file instead of by category"
+        }
+      }
+    }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "webpack",
-    "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test"
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "@types/vscode": "^1.102.0",
-    "@types/mocha": "^10.0.10",
-    "@types/node": "22.x",
-    "@typescript-eslint/eslint-plugin": "^8.39.0",
-    "@typescript-eslint/parser": "^8.39.0",
-    "eslint": "^9.32.0",
-    "typescript": "^5.9.2",
-    "ts-loader": "^9.5.2",
-    "webpack": "^5.101.0",
-    "webpack-cli": "^6.0.1",
-    "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.28.0",
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {
+    "typescript": "^4.9.4"
   }
 }

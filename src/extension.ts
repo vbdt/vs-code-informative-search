@@ -27,6 +27,12 @@ export function activate(context: vscode.ExtensionContext) {
         await performWorkspaceSearch(searchProvider, treeProvider);
     });
 
+    // Add a simple test command
+    console.log('Registering test command...');
+    const testCommand = vscode.commands.registerCommand('informativeSearch.test', () => {
+        vscode.window.showInformationMessage('Extension is working!');
+    });
+
     console.log('Registering informativeSearch.searchCurrentFile command...');
     const searchCurrentFileCommand = vscode.commands.registerCommand('informativeSearch.searchCurrentFile', async () => {
         console.log('informativeSearch.searchCurrentFile command executed!');
@@ -122,6 +128,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register all disposables
     context.subscriptions.push(
         searchCommand,
+        testCommand,
         searchCurrentFileCommand,
         searchSelectedTextCommand,
         clearResultsCommand,
@@ -160,6 +167,7 @@ async function performWorkspaceSearch(
     treeProvider: InformativeSearchTreeProvider,
     searchTerm?: string
 ) {
+	
     if (!searchTerm) {
         searchTerm = await vscode.window.showInputBox({
             prompt: 'Enter search term',
@@ -180,26 +188,38 @@ async function performWorkspaceSearch(
         return;
     }
 
+    // Ensure searchTerm is not undefined for the rest of the function
+    const finalSearchTerm: string = searchTerm;
     const config = getSearchConfiguration();
+
+		console.log('🔍 Search started for term:', finalSearchTerm);
+		console.log('🔍 Config:', JSON.stringify(config, null, 2));
     
     try {
         // Show progress
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: `Searching for "${searchTerm}"...`,
+            title: `Searching for "${finalSearchTerm}"...`,
             cancellable: true
         }, async (progress, token) => {
             
             // Update progress
             progress.report({ message: 'Scanning files...' });
             
-            const results = await searchProvider.searchInWorkspace(searchTerm, config, (filesSearched, totalFiles) => {
-                const percentage = Math.round((filesSearched / totalFiles) * 100);
-                progress.report({ 
-                    message: `Searched ${filesSearched}/${totalFiles} files (${percentage}%)`,
-                    increment: percentage
-                });
-            }, token);
+            const results = await searchProvider.searchInWorkspace(finalSearchTerm, config, (filesSearched, totalFiles) => {
+							console.log(`🔍 Progress: ${filesSearched}/${totalFiles} files`);
+							const percentage = Math.round((filesSearched / totalFiles) * 100);
+							progress.report({ 
+								message: `Searched ${filesSearched}/${totalFiles} files (${percentage}%)`,
+								increment: percentage
+							});
+						}, token);
+
+						console.log('🔍 Search completed. Results:', {
+							totalMatches: results.totalMatches,
+							searchedFiles: results.searchedFiles,
+							categoriesCount: results.categories.size
+						});
 
             if (token.isCancellationRequested) {
                 vscode.window.showInformationMessage('Search cancelled');
@@ -252,14 +272,26 @@ async function performCurrentFileSearch(
         return;
     }
 
+    // Ensure searchTerm is not undefined for the rest of the function
+    const finalSearchTerm: string = searchTerm;
     const config = getSearchConfiguration();
     
     try {
-        const results = await searchProvider.searchInFile(editor.document, searchTerm, config);
+        const results = await searchProvider.searchInFile(editor.document, finalSearchTerm, config);
         
+				console.log('🌳 Updating tree view with results:', {
+						totalMatches: results.totalMatches,
+						categoriesWithResults: Array.from(results.categories.entries())
+								.filter(([_, matches]) => matches.length > 0)
+								.map(([category, matches]) => `${category}: ${matches.length}`)
+				});
         // Update tree view
         treeProvider.updateResults(results);
         vscode.commands.executeCommand('setContext', 'informativeSearch:hasResults', results.totalMatches > 0);
+
+				if (results.totalMatches > 0) {
+						vscode.commands.executeCommand('workbench.view.explorer');
+				}
 
         // Show summary
         const fileName = vscode.workspace.asRelativePath(editor.document.uri);

@@ -110,9 +110,9 @@ export class SearchProvider {
      * Search in a single document
      */
     private async searchInDocument(
-        document: vscode.TextDocument,
-        searchTerm: string,
-        config: SearchConfiguration
+      document: vscode.TextDocument,
+      searchTerm: string,
+      config: SearchConfiguration
     ): Promise<CategorizedResults> {
         const results: CategorizedResults = {
             searchTerm,
@@ -130,13 +130,22 @@ export class SearchProvider {
         const text = document.getText();
         const lines = text.split('\n');
         
+        console.log(`🔍 Searching in file: ${document.fileName}`);
+        console.log(`🔍 File has ${lines.length} lines`);
+        
         // Create search pattern
         const searchPattern = this.createSearchPattern(searchTerm, config);
+        
+        let totalMatchesInFile = 0;
         
         // Search each line
         for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
             const line = lines[lineNumber];
             const matches = this.findMatches(line, searchPattern, config);
+            
+            if (matches.length > 0) {
+                console.log(`🔍 Line ${lineNumber + 1}: Found ${matches.length} matches - "${line.trim()}"`);
+            }
             
             for (const match of matches) {
                 // Analyze the context of this match
@@ -151,14 +160,19 @@ export class SearchProvider {
                 );
 
                 if (searchMatch) {
+                    console.log(`🔍 Match categorized as: ${searchMatch.category}`);
                     const categoryMatches = results.categories.get(searchMatch.category) || [];
                     categoryMatches.push(searchMatch);
                     results.categories.set(searchMatch.category, categoryMatches);
                     results.totalMatches++;
+                    totalMatchesInFile++;
+                } else {
+                    console.log(`🔍 Match was filtered out (null result)`);
                 }
             }
         }
-
+        
+        console.log(`🔍 File ${document.fileName}: ${totalMatchesInFile} matches found`);
         return results;
     }
 
@@ -166,27 +180,38 @@ export class SearchProvider {
      * Find files to search based on configuration
      */
     private async findFilesToSearch(config: SearchConfiguration): Promise<vscode.Uri[]> {
-        const includePattern = `{${config.includePatterns.join(',')}}`;
-        const excludePattern = `{${config.excludePatterns.join(',')}}`;
-        
-        try {
-            const files = await vscode.workspace.findFiles(includePattern, excludePattern);
-            return files.filter(file => {
-                // Additional filtering if needed
-                const fileName = file.fsPath.toLowerCase();
-                
-                // Skip binary files
-                const binaryExtensions = ['.exe', '.dll', '.so', '.dylib', '.bin', '.jpg', '.jpeg', '.png', '.gif', '.pdf'];
-                if (binaryExtensions.some(ext => fileName.endsWith(ext))) {
-                    return false;
-                }
-                
-                return true;
-            });
-        } catch (error) {
-            console.error('Error finding files:', error);
-            return [];
-        }
+    // Don't wrap in extra braces if we already have complex patterns
+      const includePattern = config.includePatterns.length === 1 
+          ? config.includePatterns[0] 
+          : `{${config.includePatterns.join(',')}}`;
+      
+      const excludePattern = config.excludePatterns.length === 1
+          ? config.excludePatterns[0]
+          : `{${config.excludePatterns.join(',')}}`;
+      
+      console.log('🔍 Looking for files with pattern:', includePattern);
+      console.log('🔍 Excluding pattern:', excludePattern);
+      
+      try {
+          const files = await vscode.workspace.findFiles(includePattern, excludePattern);
+          console.log('🔍 Found files:', files.length);
+          console.log('🔍 First few files:', files.slice(0, 5).map(f => f.fsPath));
+          
+          return files.filter(file => {
+              const fileName = file.fsPath.toLowerCase();
+              
+              // Skip binary files
+              const binaryExtensions = ['.exe', '.dll', '.so', '.dylib', '.bin', '.jpg', '.jpeg', '.png', '.gif', '.pdf'];
+              if (binaryExtensions.some(ext => fileName.endsWith(ext))) {
+                  return false;
+              }
+              
+              return true;
+          });
+      } catch (error) {
+          console.error('🔍 Error finding files:', error);
+          return [];
+      }
     }
 
     /**

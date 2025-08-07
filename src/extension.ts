@@ -20,12 +20,16 @@ export function activate(context: vscode.ExtensionContext) {
     // Set initial context values
     vscode.commands.executeCommand('setContext', 'informativeSearch:hasResults', false);
 
-    // Register commands
+    // Register commands with debug logging
+    console.log('Registering informativeSearch.search command...');
     const searchCommand = vscode.commands.registerCommand('informativeSearch.search', async () => {
+        console.log('informativeSearch.search command executed!');
         await performWorkspaceSearch(searchProvider, treeProvider);
     });
 
+    console.log('Registering informativeSearch.searchCurrentFile command...');
     const searchCurrentFileCommand = vscode.commands.registerCommand('informativeSearch.searchCurrentFile', async () => {
+        console.log('informativeSearch.searchCurrentFile command executed!');
         await performCurrentFileSearch(searchProvider, treeProvider);
     });
 
